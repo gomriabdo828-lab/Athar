@@ -1,0 +1,34 @@
+name: Build APK
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: unzip -o athar_flutter.zip -d app
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Prepare Android
+        working-directory: app
+        run: |
+          mkdir /tmp/keep && cp -r lib pubspec.yaml /tmp/keep/
+          flutter create . --platforms=android --project-name athar --org com.athar
+          cp /tmp/keep/pubspec.yaml pubspec.yaml
+          cp -r /tmp/keep/lib/. lib/
+          M=android/app/src/main/AndroidManifest.xml
+          sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET"/><uses-permission android:name="android.permission.RECORD_AUDIO"/><application#' $M
+      - name: Build
+        working-directory: app
+        run: |
+          flutter pub get
+          flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: athar-apk
+          path: app/build/app/outputs/flutter-apk/app-release.apk
